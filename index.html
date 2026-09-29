@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Bank CSV Normalizer | North Vault Digital</title>
+<meta name="description" content="Clean inconsistent bank CSV exports locally in your browser without uploading financial data.">
+<style>body{font:16px system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#17202a}h1{margin-bottom:.25rem}.note{background:#eef6ff;padding:1rem;border-radius:8px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem}label{display:flex;flex-direction:column;gap:.25rem}button{padding:.7rem 1rem;margin:.75rem .5rem .75rem 0;cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}pre{white-space:pre-wrap;background:#f5f5f5;padding:1rem;min-height:5rem}.small{font-size:.9rem;color:#475569}.error{color:#9f1239}</style>
+</head>
+<body>
+<h1>Bank CSV Normalizer</h1>
+<p class="small">North Vault Digital · private, local-first CSV cleanup</p>
+<p class="note"><strong>Privacy boundary:</strong> Your file stays in this browser. This tool makes no upload, bank connection, account lookup, or server request. Use only data you are authorized to inspect, and do not place credentials or bank login information in a CSV.</p>
+<p class="small">Normalize common date, description, amount/debit/credit columns, flag exceptions, and download a cleaned CSV plus exception report. This is not accounting, tax, reconciliation, or financial advice.</p>
+<p><input id="file" type="file" accept=".csv,text/csv"></p>
+<div class="grid">
+<label>Date column<select id="date"><option value="">Auto-detect</option></select></label>
+<label>Description column<select id="description"><option value="">Auto-detect</option></select></label>
+<label>Amount column<select id="amount"><option value="">Auto-detect</option></select></label>
+<label>Debit column<select id="debit"><option value="">None</option></select></label>
+<label>Credit column<select id="credit"><option value="">None</option></select></label>
+</div>
+<button id="analyze" disabled>Analyze locally</button><button id="download" disabled>Download normalized CSV</button><button id="exceptions" disabled>Download exception report</button>
+<pre id="out">Choose a CSV file to begin.</pre>
+<p class="small">Need help with a larger or repeated cleanup workflow? <a href="https://payhip.com/b/BYezZ" rel="noopener noreferrer">See the optional North Vault Digital package</a>.</p>
+<script src="app_core.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id), state = { rows: [], result: null };
+function fillSelect(element, headers, none) { element.replaceChildren(); const first = document.createElement('option'); first.value = ''; first.textContent = none ? 'None' : 'Auto-detect'; element.append(first); headers.forEach((header, index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = header; element.append(option); }); }
+function download(name, text, type) { const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([text], { type })); link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); }
+function csvEscape(value) { return `"${String(value ?? '').replaceAll('"', '""')}"`; }
+$('file').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; try { BankCsvNormalizer.validateFileSize(file.size); const reader = new FileReader(); reader.onload = () => { try { state.rows = BankCsvNormalizer.parseCsv(reader.result); const headers = state.rows[0]; ['date','description','amount','debit','credit'].forEach((id) => fillSelect($(id), headers, id === 'debit' || id === 'credit')); $('analyze').disabled = false; $('out').textContent = `Loaded ${state.rows.length - 1} data row(s). No upload occurred.`; } catch (error) { $('out').textContent = `Input rejected: ${error.message}`; } }; reader.readAsText(file); } catch (error) { $('out').textContent = `Input rejected: ${error.message}`; } });
+$('analyze').addEventListener('click', () => { try { const value = (id) => $(id).value === '' ? undefined : Number($(id).value); state.result = BankCsvNormalizer.normalizeRows(state.rows, { date: value('date'), description: value('description'), amount: value('amount'), debit: value('debit'), credit: value('credit') }); $('out').textContent = JSON.stringify({ rows: state.result.rows.length, exceptions: state.result.findings.length, local_only: true, uploaded: false, bank_connection: false, findings: state.result.findings.slice(0, 50) }, null, 2); $('download').disabled = false; $('exceptions').disabled = false; } catch (error) { $('out').textContent = `Analysis rejected: ${error.message}`; } });
+$('download').addEventListener('click', () => download('normalized-transactions.csv', ['date,description,amount', ...state.result.rows.map((row) => [row.date, row.description, row.amount].map(csvEscape).join(','))].join('\n'), 'text/csv'));
+$('exceptions').addEventListener('click', () => download('normalizer-exceptions.json', JSON.stringify({ findings: state.result.findings }, null, 2), 'application/json'));
+</script>
+</body>
+</html>

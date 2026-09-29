@@ -1,0 +1,13 @@
+{
+  "schema": "ADE_R14_BANK_CSV_PUBLIC_RELEASE_CANDIDATE_V1",
+  "name": "North Vault Digital Bank CSV Normalizer",
+  "version": "1.0.0-candidate",
+  "release_form": "static_browser_utility_with_public_source_candidate",
+  "network": false,
+  "uploads": false,
+  "bank_connection": false,
+  "runtime_dependencies": [],
+  "synthetic_inputs": ["sample-bank-export.csv", "malformed-bank-export.csv"],
+  "owner_decisions_required": ["license_choice", "public_repository_or_host_destination", "publication_authorization"],
+  "paid_cta": "https://payhip.com/b/BYezZ"
+}
